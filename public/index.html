@@ -1,0 +1,286 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Moderne Products Dashboard</title>
+
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #f4f6fb;
+      margin: 0;
+      padding: 0;
+    }
+
+    header {
+      background: #111827;
+      color: white;
+      padding: 20px;
+      text-align: center;
+      font-size: 22px;
+      font-weight: bold;
+    }
+
+    .container {
+      max-width: 900px;
+      margin: 30px auto;
+      padding: 20px;
+    }
+
+    h2 {
+      margin-top: 40px;
+      color: #111827;
+    }
+
+    .form-box {
+      background: white;
+      padding: 20px;
+      border-radius: 12px;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.08);
+      margin-bottom: 30px;
+    }
+
+    input {
+      width: 100%;
+      padding: 10px;
+      margin: 8px 0;
+      border-radius: 8px;
+      border: 1px solid #ccc;
+      font-size: 15px;
+    }
+
+    button {
+      padding: 10px 15px;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 14px;
+      font-weight: bold;
+      transition: 0.2s;
+    }
+
+    button:hover {
+      opacity: 0.85;
+    }
+
+    .btn-add {
+      background: #2563eb;
+      color: white;
+      width: 100%;
+    }
+
+    .products-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+      gap: 20px;
+    }
+
+    .card {
+      background: white;
+      padding: 18px;
+      border-radius: 14px;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.08);
+    }
+
+    .card h3 {
+      margin: 0;
+      font-size: 18px;
+      color: #111827;
+    }
+
+    .card p {
+      margin: 8px 0;
+      font-size: 15px;
+      color: #444;
+    }
+
+    .card-buttons {
+      display: flex;
+      gap: 10px;
+      margin-top: 12px;
+    }
+
+    .btn-update {
+      flex: 1;
+      background: #f59e0b;
+      color: white;
+    }
+
+    .btn-delete {
+      flex: 1;
+      background: #dc2626;
+      color: white;
+    }
+
+    .popup {
+      display: none;
+      position: fixed;
+      top: 0; left: 0;
+      width: 100%; height: 100%;
+      background: rgba(0,0,0,0.6);
+      justify-content: center;
+      align-items: center;
+    }
+
+    .popup-box {
+      background: white;
+      padding: 25px;
+      border-radius: 14px;
+      width: 300px;
+      text-align: center;
+    }
+
+    .popup-box input {
+      margin: 10px 0;
+    }
+
+    .btn-save {
+      background: #16a34a;
+      color: white;
+      width: 100%;
+    }
+
+    .btn-close {
+      background: gray;
+      color: white;
+      width: 100%;
+      margin-top: 8px;
+    }
+  </style>
+</head>
+
+<body>
+
+  <header>🛒 Products CRUD Dashboard</header>
+
+  <div class="container">
+
+    <!-- ADD PRODUCT FORM -->
+    <div class="form-box">
+      <h2>Add New Product</h2>
+      <input id="name" placeholder="Product Name" />
+      <input id="price" placeholder="Product Price" />
+      <button class="btn-add" onclick="addProduct()">➕ Add Product</button>
+    </div>
+
+    <!-- PRODUCTS LIST -->
+    <h2>Product List</h2>
+    <div class="products-grid" id="productList"></div>
+
+  </div>
+
+  <!-- UPDATE POPUP -->
+  <div class="popup" id="popup">
+    <div class="popup-box">
+      <h3>Update Product</h3>
+      <input id="updateName" placeholder="New Name" />
+      <input id="updatePrice" placeholder="New Price" />
+      <button class="btn-save" onclick="saveUpdate()">💾 Save</button>
+      <button class="btn-close" onclick="closePopup()">Cancel</button>
+    </div>
+  </div>
+
+  <script>
+    const API_URL = "http://localhost:5000/api/products";
+
+    let currentUpdateId = null;
+
+    // LOAD PRODUCTS
+    async function loadProducts() {
+      const res = await fetch(API_URL);
+      const products = await res.json();
+
+      const list = document.getElementById("productList");
+      list.innerHTML = "";
+
+      products.forEach(p => {
+        const card = document.createElement("div");
+        card.className = "card";
+
+        card.innerHTML = `
+          <h3>${p.name}</h3>
+          <p>Price: ₱${p.price}</p>
+
+          <div class="card-buttons">
+            <button class="btn-update" onclick="openPopup(${p.id}, '${p.name}', ${p.price})">
+              Update
+            </button>
+            <button class="btn-delete" onclick="deleteProduct(${p.id})">
+              Delete
+            </button>
+          </div>
+        `;
+
+        list.appendChild(card);
+      });
+    }
+
+    // ADD PRODUCT
+    async function addProduct() {
+      const name = document.getElementById("name").value;
+      const price = document.getElementById("price").value;
+
+      if (!name || !price) {
+        alert("Please fill in all fields.");
+        return;
+      }
+
+      await fetch(API_URL, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name, price })
+      });
+
+      document.getElementById("name").value = "";
+      document.getElementById("price").value = "";
+
+      loadProducts();
+    }
+
+    // DELETE PRODUCT
+    async function deleteProduct(id) {
+      await fetch(`${API_URL}/${id}`, {
+        method: "DELETE"
+      });
+
+      loadProducts();
+    }
+
+    // OPEN UPDATE POPUP
+    function openPopup(id, name, price) {
+      currentUpdateId = id;
+      document.getElementById("updateName").value = name;
+      document.getElementById("updatePrice").value = price;
+
+      document.getElementById("popup").style.display = "flex";
+    }
+
+    // CLOSE POPUP
+    function closePopup() {
+      document.getElementById("popup").style.display = "none";
+    }
+
+    // SAVE UPDATE
+    async function saveUpdate() {
+      const name = document.getElementById("updateName").value;
+      const price = document.getElementById("updatePrice").value;
+
+      await fetch(`${API_URL}/${currentUpdateId}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name, price })
+      });
+
+      closePopup();
+      loadProducts();
+    }
+
+    // AUTO LOAD ON START
+    loadProducts();
+  </script>
+
+</body>
+</html>
+
+
